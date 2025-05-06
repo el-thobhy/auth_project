@@ -11,12 +11,12 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["daily_note_be/daily_note_be.csproj", "daily_note_be/"]
+COPY ["daily_note_be.csproj", "."]
 COPY ["Framework.Auth/Framework.Auth.csproj", "Framework.Auth/"]
 COPY ["ViewModel/ViewModel.csproj", "ViewModel/"]
-RUN dotnet restore "./daily_note_be/daily_note_be.csproj"
+RUN dotnet restore "./daily_note_be.csproj"
 COPY . .
-WORKDIR "/src/daily_note_be"
+WORKDIR "/src/."
 RUN dotnet build "./daily_note_be.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
