@@ -12,49 +12,54 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
-builder.Services.AddDbContext<DailyNoteDbContext>(context =>
+
+builder.Services.AddDbContext<DailyNoteDbContext>(options =>
 {
-    context.UseSqlServer(builder.Configuration.GetConnectionString("Db_Conn"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Db_Conn"));
 });
 
+// Register validators
 builder.Services.AddScoped<IValidator<LoginViewModel>, LoginValidator>();
 builder.Services.AddScoped<IValidator<string>, EmailValidator>();
 builder.Services.AddScoped<IValidator<RegisterViewModel>, RegisterValidator>();
 builder.Services.AddScoped<IValidator<UpdateProfileViewModel>, UpdateProfileValidator>();
 builder.Services.AddScoped<IValidator<AccountViewModel>, OtpValidator>();
 
+// Enable CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()
+    );
+});
 
-builder.Services.AddCors(policyBuilder =>
-    policyBuilder.AddDefaultPolicy(policy =>
-        policy.WithOrigins("*").AllowAnyMethod().AllowAnyHeader()
-    )
-);
-builder.Services.AddAuthentication(opt =>
+// JWT Authentication
+builder.Services.AddAuthentication(options =>
 {
-    opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-.AddJwtBearer("Bearer", opt =>
+.AddJwtBearer("Bearer", options =>
 {
-    var confuguration = builder.Configuration;
-    Console.WriteLine(confuguration["JWT:Secret"]);
-    opt.TokenValidationParameters = new TokenValidationParameters
+    var configuration = builder.Configuration;
+    Console.WriteLine(configuration["JWT:Secret"]);
+    options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = confuguration["JWT:Issuer"],
-        ValidAudience = confuguration["JWT:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(confuguration["JWT:Secret"]))
+        ValidIssuer = configuration["JWT:Issuer"],
+        ValidAudience = configuration["JWT:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]))
     };
-    opt.Events = new JwtBearerEvents
+
+    options.Events = new JwtBearerEvents
     {
         OnChallenge = context =>
         {
             context.Response.OnStarting(async () =>
             {
-                ResponseResult result = new ResponseResult();
                 await context.Response.WriteAsync("You are not authorized!");
             });
             return Task.CompletedTask;
@@ -70,12 +75,17 @@ builder.Services.AddAuthentication(opt =>
     };
 });
 
-
 var app = builder.Build();
 
+// Map a basic health-check endpoint
+app.MapGet("/", () => "API is running");
+
+// Middleware pipeline
 app.UseHttpsRedirection();
 
 app.UseStatusCodePages();
+
+app.UseCors(); // <--- Pindah ke atas sebelum Auth
 
 app.UseAuthentication();
 
@@ -83,8 +93,4 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.UseCors();
-
 app.Run();
-
-
