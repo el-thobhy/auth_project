@@ -336,3 +336,5 @@ ASALocalRun/
 
 # Local History for Visual Studio
 .localhistory/
+/daily_note_be/appsettings.json
+/daily_note_be/appsettings.Development.json
